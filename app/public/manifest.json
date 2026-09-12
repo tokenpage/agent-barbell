@@ -1,0 +1,5 @@
+{
+  "name": "Agent Barbell",
+  "description": "A risk-budget barbell agent for Robinhood Chain",
+  "iconPath": "/assets/icon.png"
+}

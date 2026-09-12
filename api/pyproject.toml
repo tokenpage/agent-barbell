@@ -1,0 +1,25 @@
+[project]
+name = "agent-barbell-api"
+version = "0.1.0"
+requires-python = ">=3.12, <4.0"
+dependencies = [
+    "kiba-core[core-api,database-psql,requester,web3]==0.5.3.dev55",
+    "alembic==1.15.1",
+    "siwe>=4.4.0",
+    "abnf==2.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "kiba-core[types]==0.5.3.dev55",
+    "kiba-build==0.1.11.dev15",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

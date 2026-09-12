@@ -83,3 +83,64 @@ Single chain, single fresh deployment: everything runs on Robinhood Chain mainne
 **Prizes hit:** The Graph Best Use of Composable/Standardized Products ($5k — custom Subgraph composed with Subgraph MCP) and AI Tooling/Use Case track ($5k From Scratch — the agent's risk decisions are driven by Graph-sourced vol/momentum context, not a raw query printout). Uniswap Foundation Best Stack Contribution ($3k net-new — real swap execution on Robinhood Chain's Uniswap deployment). Bazantic "Help an agent use your project" — likely net-new here rather than continuity, since the on-chain instance is fresh (verify against ETHGlobal's exact continuity definition before submitting). Ledger AI Agents ($3.5k — back the wallet's operator key with Ledger Key Ring CLI instead of a hot key, and frame the kill-switch as the "human/hardware approves high-risk action" moment they ask for). Chainlink Automated Liquidation Protection Challenge ($500, direct simulated judging) and/or Confidential Workflow ($2k) if there's time to move the kill-switch threshold logic into a CRE TEE so the user's exact loss-budget number stays private even from us.
 
 **Open risks (not blockers):** confirm the actual Robinhood Chain Uniswap V3 router address and 2–3 genuinely liquid ticker pairs (one stable-ish blue-chip, one volatile meme/RWA) before building; verify Hermes function-calling reliability for MCP tool use with a short spike before committing; confirm Subgraph Studio indexing latency is acceptable for a live demo (index from contract-deployment block, not chain genesis, to keep sync time short); pick the simplest realized-volatility/momentum formula that's still demo-legible (e.g. rolling stdev of indexed price ticks) rather than anything requiring a model; since this is a fresh, standalone deployment rather than an extension of live Base infra, double-check whether ETHGlobal counts reusing AgentWalletKit's open-source *contract code* (not its live state) as Continuity, or whether this submission is cleaner as Net-new.
+
+## Development
+
+Two services: `api/` (Starlette + kiba-core + SQLAlchemy/Alembic, Python/uv) and `app/` (React via kibalabs-build/Vite). See `implementation-plan.md` for the phased build plan.
+
+### Local setup
+
+```bash
+# api
+cd api && make install
+
+# app
+cd app && make install
+```
+
+`api/` needs a PostgreSQL instance reachable via the `DB_*` env vars. `db-setup.sql` provisions an isolated `barbelldb` database and `barbell_admin` login on the shared RDS instance. Barbell uses `barbelldb`'s `public` schema, matching YieldSeeker. Run it once with the existing `yieldseeker_admin` Terraform admin from a host that can reach the private RDS network. It prompts for the new `barbell_admin` password; no password is stored in this repo.
+
+```bash
+psql --host="$REMOTE_DB_HOST" --port="$REMOTE_DB_PORT" \
+  --username="$REMOTE_DB_USERNAME" --dbname="$REMOTE_DB_NAME" \
+  --file=db-setup.sql
+```
+
+After the bootstrap, use `DB_NAME=barbelldb`, `DB_USERNAME=barbell_admin`, and the password entered by the script when running Alembic:
+
+```bash
+cd api
+DB_HOST=... DB_PORT=5432 DB_NAME=barbelldb DB_USERNAME=barbell_admin DB_PASSWORD=... uv run --active alembic upgrade head
+```
+
+### Running locally
+
+```bash
+# api — http://127.0.0.1:5100
+cd api && DB_HOST=... DB_PORT=... DB_NAME=... DB_USERNAME=... DB_PASSWORD=... make start
+
+# app — http://127.0.0.1:3100
+cd app && make start
+```
+
+Or both together via `docker-compose up` from the repo root (the api container still needs the `DB_*` env vars set, e.g. via a local `.env` file passed to `docker compose`).
+
+### Checks
+
+```bash
+cd api && make lint-check && make type-check
+cd app && npx lint && npx type-check
+```
+
+### Deployment
+
+Same mechanism `yieldseeker-app` uses, on the same shared infra — not Fly.io, not a separate AWS account.
+
+- **`api`** deploys as a `docker run` container on the shared appbox EC2 instance, discovered by its `nginx-proxy` via `VIRTUAL_HOST` (`.github/workflows/api-deploy.yml`, mirrors `yieldseeker-app/.github/workflows/api-deploy.yml`). Domain: `agent-barbell-api.yieldseeker.xyz`.
+- **`app`** builds statically and syncs to the same S3 bucket + CloudFront distribution as `yieldseeker-app`, under a new path prefix (`.github/workflows/app-deploy.yml`, mirrors `yieldseeker-app/.github/workflows/app-deploy.yml`). Domain: `agent-barbell.yieldseeker.xyz`.
+
+**Not yet actually deployed** — this repo needs its own copy of the relevant GitHub Actions secrets (`YS_APPBOX_URL`, `YS_APPBOX_USER`, `YS_APPBOX_SSH_KEY`, `YS_APPBOX_PORT` for the api; `SITE_DEPLOYER_AWS_ACCESS_KEY_ID`, `SITE_DEPLOYER_AWS_SECRET_ACCESS_KEY`, `SITE_DEPLOYER_AWS_REGION`, `SITE_DEPLOYMENT_S3_BUCKET_NAME`, `SITE_DEPLOYMENT_CLOUDFRONT_ID` for the app — same values `yieldseeker-app` uses, since it's the same box/bucket/distribution), plus DNS: an A record for `agent-barbell-api.yieldseeker.xyz` pointing at the appbox EIP, and a CNAME/alias for `agent-barbell.yieldseeker.xyz` pointing at the CloudFront distribution (added as an alternate domain name on that distribution first). None of that is set up yet.
+
+The api container also needs a `~/.agent-barbell-api.vars` env file on the appbox (same pattern as `~/.yieldseeker-api.vars`) containing `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `AUTH_ALLOWED_DOMAINS`.
+
+`.github/workflows/api-check.yml` and `app-check.yml` run lint/type-check/security-check on every PR touching their respective directories.

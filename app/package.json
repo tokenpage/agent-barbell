@@ -1,0 +1,19 @@
+{
+  "name": "agent-barbell-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kibalabs/core": "^0.7.1",
+    "@kibalabs/core-react": "^0.10.0",
+    "@kibalabs/ui-react": "0.12.1-next.4",
+    "@kibalabs/web3-react": "0.3.1-next.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@kibalabs/build": "0.14.2-next.4",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4"
+  }
+}
