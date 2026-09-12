@@ -1,12 +1,13 @@
 import React from 'react';
 
-import { LocalStorageClient } from '@kibalabs/core';
+import { LocalStorageClient, Requester } from '@kibalabs/core';
 import { IMultiAnyChildProps } from '@kibalabs/core-react';
 
-import { AgentBarbellClient } from './client/client';
+import { AgentBarbellClient } from './client';
 
 export interface IGlobals {
   localStorageClient: LocalStorageClient;
+  requester: Requester;
   agentBarbellClient: AgentBarbellClient;
 }
 

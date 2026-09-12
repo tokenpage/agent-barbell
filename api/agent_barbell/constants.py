@@ -38,25 +38,24 @@ CHAIN_SATELLITE_ASSET_MAP: dict[int, str] = {
     ROBINHOOD_CHAIN_ID: '0x1b0E319c6A659F002271B69dB8A7df2F911c153E',
 }
 
-ASSET_SYMBOL_MAP: dict[str, str] = (
-    dict.fromkeys(CHAIN_USDG_MAP.values(), 'USDG')
-    | dict.fromkeys(CHAIN_WETH_MAP.values(), 'WETH')
-    | dict.fromkeys(CHAIN_ANCHOR_ASSET_MAP.values(), 'SGOV')
-    | dict.fromkeys(CHAIN_SATELLITE_ASSET_MAP.values(), 'GME')
-)
+CHAIN_SATELLITE_ASSET_OPTIONS_MAP: dict[int, tuple[str, ...]] = {
+    ROBINHOOD_CHAIN_ID: (CHAIN_SATELLITE_ASSET_MAP[ROBINHOOD_CHAIN_ID],),
+}
 
-ASSET_DECIMALS_MAP: dict[str, int] = (
-    dict.fromkeys(CHAIN_USDG_MAP.values(), 6)
-    | dict.fromkeys(CHAIN_WETH_MAP.values(), 18)
-    | dict.fromkeys(CHAIN_ANCHOR_ASSET_MAP.values(), 18)
-    | dict.fromkeys(CHAIN_SATELLITE_ASSET_MAP.values(), 18)
-)
+ASSET_SYMBOL_MAP: dict[str, str] = dict.fromkeys(CHAIN_USDG_MAP.values(), 'USDG') | dict.fromkeys(CHAIN_WETH_MAP.values(), 'WETH') | dict.fromkeys(CHAIN_ANCHOR_ASSET_MAP.values(), 'SGOV') | dict.fromkeys(CHAIN_SATELLITE_ASSET_MAP.values(), 'GME')
+ASSET_NAME_MAP: dict[str, str] = {
+    CHAIN_USDG_MAP[ROBINHOOD_CHAIN_ID]: 'Global Dollar',
+    CHAIN_WETH_MAP[ROBINHOOD_CHAIN_ID]: 'Wrapped Ether',
+    CHAIN_ANCHOR_ASSET_MAP[ROBINHOOD_CHAIN_ID]: 'Short-term treasury ETF token',
+    CHAIN_SATELLITE_ASSET_MAP[ROBINHOOD_CHAIN_ID]: 'GameStop',
+}
+ASSET_DECIMALS_MAP: dict[str, int] = dict.fromkeys(CHAIN_USDG_MAP.values(), 6) | dict.fromkeys(CHAIN_WETH_MAP.values(), 18) | dict.fromkeys(CHAIN_ANCHOR_ASSET_MAP.values(), 18) | dict.fromkeys(CHAIN_SATELLITE_ASSET_MAP.values(), 18)
 
 SUPPORTED_BASE_ASSETS: dict[int, set[str]] = {
     ROBINHOOD_CHAIN_ID: {
         CHAIN_USDG_MAP[ROBINHOOD_CHAIN_ID],
         CHAIN_ANCHOR_ASSET_MAP[ROBINHOOD_CHAIN_ID],
-        CHAIN_SATELLITE_ASSET_MAP[ROBINHOOD_CHAIN_ID],
+        *CHAIN_SATELLITE_ASSET_OPTIONS_MAP[ROBINHOOD_CHAIN_ID],
     },
 }
 
@@ -78,7 +77,23 @@ MULTICALL3_ADDRESS_MAP: dict[int, str] = {
 ANCHOR_POOL_FEE = 3000
 SATELLITE_POOL_FEE = 10000
 
+ANCHOR_POOL_ADDRESS_MAP: dict[int, str] = {
+    ROBINHOOD_CHAIN_ID: '0xfAb520051f96F4D2a32c22B6a3dD7fFfdf231bFe',
+}
+
+SATELLITE_POOL_ADDRESS_MAP: dict[int, str] = {
+    ROBINHOOD_CHAIN_ID: '0xE9713f453aDB9245B19559790c96F470a18F2fDF',
+}
+
+MAX_BPS = 10000
+
+AGENT_CHAT_MAX_STEPS = 8
+
 ROBINHOOD_BLOCK_TIME_SECONDS = 0.1
+
+BARBELL_NAME_MIN_LENGTH = 3
+BARBELL_NAME_MAX_LENGTH = 30
+BARBELL_NAME_ALLOWED_CHARACTERS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ._&$-'")
 
 # Risk engine defaults. Every one of these is a bound the deterministic engine enforces;
 # the language model can move a policy within these bounds but never outside them.
@@ -98,7 +113,16 @@ SECONDS_PER_HOUR = 60 * 60
 
 # Populated by contracts/deployments.json once Phase 1 deploys. Keys must match the
 # deployments.json key names so the two can be diffed by eye.
-AB_DEPLOYMENTS_MAP: dict[int, dict[str, str]] = {}
+AB_DEPLOYMENTS_MAP: dict[int, dict[str, str]] = {
+    4663: {
+        'adapterRegistry': '0x2e3023BFe3128Bbb3e51426475EF69CDAD76e199',
+        'agentWalletFactory': '0x0c86984CD94736de2989d7700BbE00eec3F01ef1',
+        'agentWalletImplementation': '0xB593dF9ba21584d3db3d897DCa004C2cEe12307F',
+        'riskBudgetRegistry': '0x2AC766FcC38e0e9Faa280bdFf91D49a006b040aC',
+        'sellPolicy': '0xCF309CB284A6b12B8A060D70f80f19f1F8A076C5',
+        'uniswapV3SwapAdapter': '0x2c5Fc263eeF5D5b3C2dEa4598E0C3e32EcF91AaC',
+    }
+}
 AB_ADAPTER_REGISTRY_ADDRESS_MAP = {chainId: deployments['adapterRegistry'] for chainId, deployments in AB_DEPLOYMENTS_MAP.items()}
 AB_AGENT_WALLET_FACTORY_ADDRESS_MAP = {chainId: deployments['agentWalletFactory'] for chainId, deployments in AB_DEPLOYMENTS_MAP.items()}
 AB_AGENT_WALLET_IMPLEMENTATION_ADDRESS_MAP = {chainId: deployments['agentWalletImplementation'] for chainId, deployments in AB_DEPLOYMENTS_MAP.items()}

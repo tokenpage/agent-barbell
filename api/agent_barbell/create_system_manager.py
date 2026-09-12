@@ -8,10 +8,18 @@ from core.requester import Requester
 from core.store.database import Database
 
 from agent_barbell import constants
+from agent_barbell.asset_manager import AssetManager
+from agent_barbell.agent.gemini_llm import GeminiLLM
+from agent_barbell.conversation_manager import ConversationManager
 from agent_barbell.eth_client_manager import EthClientManager
 from agent_barbell.eth_client_manager import ThrottledRestEthClient
+from agent_barbell.ingestion_manager import IngestionManager
+from agent_barbell.portfolio_manager import PortfolioManager
+from agent_barbell.risk_manager import RiskManager
 from agent_barbell.system_manager import SystemManager
+from agent_barbell.transaction_manager import TransactionManager
 from agent_barbell.user_manager import UserManager
+from agent_barbell.wallet_manager import WalletManager
 
 DB_HOST = os.environ['DB_HOST']
 DB_PORT = os.environ['DB_PORT']
@@ -20,6 +28,7 @@ DB_USERNAME = os.environ['DB_USERNAME']
 DB_PASSWORD = os.environ['DB_PASSWORD']
 KRT_APP_URL = os.environ['KRT_APP_URL']
 AUTH_EXTRA_ALLOWED_DOMAINS = os.environ.get('AUTH_EXTRA_ALLOWED_DOMAINS', '')
+GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
 
 PROVIDER_URLS = {
     constants.ROBINHOOD_CHAIN_ID: os.environ[f'RPC_NODE_URL_{constants.ROBINHOOD_CHAIN_ID}'],
@@ -27,6 +36,7 @@ PROVIDER_URLS = {
 ARCHIVE_PROVIDER_URLS = {
     constants.ROBINHOOD_CHAIN_ID: os.environ[f'RPC_ARCHIVE_NODE_URL_{constants.ROBINHOOD_CHAIN_ID}'],
 }
+SERVER_PRIVATE_KEY = os.environ['AB_SERVER_PRIVATE_KEY']
 
 
 def create_system_manager() -> SystemManager:
@@ -40,6 +50,7 @@ def create_system_manager() -> SystemManager:
         )
     )
     requester = Requester()
+    assetManager = AssetManager(requester=requester)
     ethClientManager = EthClientManager()
     for providerChainId, providerUrl in PROVIDER_URLS.items():
         providerClient = ThrottledRestEthClient(url=providerUrl, chainId=providerChainId, requester=requester)
@@ -47,13 +58,26 @@ def create_system_manager() -> SystemManager:
     for providerChainId, archiveProviderUrl in ARCHIVE_PROVIDER_URLS.items():
         archiveClient = ThrottledRestEthClient(url=archiveProviderUrl, chainId=providerChainId, requester=requester)
         ethClientManager.register_archive_client(client=archiveClient)
+    transactionManager = TransactionManager(ethClientManager=ethClientManager, serverPrivateKey=SERVER_PRIVATE_KEY)
+    portfolioManager = PortfolioManager(ethClientManager=ethClientManager, assetManager=assetManager)
     userManager = UserManager(
         database=database,
     )
+    walletManager = WalletManager(database=database, ethClientManager=ethClientManager, transactionManager=transactionManager)
+    riskManager = RiskManager(database=database, portfolioManager=portfolioManager)
+    ingestionManager = IngestionManager(database=database, ethClientManager=ethClientManager, portfolioManager=portfolioManager)
+    chatLlm = GeminiLLM(apiKey=GEMINI_API_KEY, requester=requester, modelId='gemini-3.5-flash-lite')
+    conversationManager = ConversationManager(database=database, llm=chatLlm, portfolioManager=portfolioManager, riskManager=riskManager)
     systemManager = SystemManager(
         requester=requester,
+        assetManager=assetManager,
         ethClientManager=ethClientManager,
         userManager=userManager,
+        walletManager=walletManager,
+        portfolioManager=portfolioManager,
+        riskManager=riskManager,
+        ingestionManager=ingestionManager,
+        conversationManager=conversationManager,
         appUrl=KRT_APP_URL,
         authExtraAllowedDomains={domain.strip() for domain in AUTH_EXTRA_ALLOWED_DOMAINS.split(',') if domain.strip()},
     )

@@ -15,6 +15,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.routing import Mount
 
 from agent_barbell.api.v1_api import create_v1_routes
+from agent_barbell.api.v1_resource_builder import ResourceBuilderV1
 from agent_barbell.create_system_manager import create_system_manager
 from agent_barbell.create_system_manager import use_system_manager
 
@@ -30,6 +31,7 @@ else:
     logging.init_json_logging(name=name, version=version, environment=environment, requestIdHolder=requestIdHolder)
 
 systemManager = create_system_manager()
+resourceBuilder = ResourceBuilderV1(walletManager=systemManager.walletManager, riskManager=systemManager.riskManager)
 
 
 @asynccontextmanager
@@ -44,7 +46,7 @@ app = Starlette(
         Mount(
             path='/v1',
             routes=[
-                *create_v1_routes(systemManager=systemManager),
+                *create_v1_routes(systemManager=systemManager, resourceBuilder=resourceBuilder),
             ],
         ),
     ],
@@ -64,8 +66,10 @@ app.add_middleware(
     allow_origins=[
         'http://localhost:3000',
         'http://localhost:3100',
+        'http://localhost:3101',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3100',
+        'http://127.0.0.1:3101',
         os.environ.get('KRT_APP_URL', 'https://agent-barbell.yieldseeker.xyz'),
     ],
     allow_origin_regex=r'https://([a-z0-9-]+\.)*agent-barbell\.yieldseeker\.xyz',

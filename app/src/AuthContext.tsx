@@ -3,18 +3,19 @@ import React from 'react';
 import { IMultiAnyChildProps } from '@kibalabs/core-react';
 import { useIsRestoringWeb3Session, useWeb3Account, useWeb3LoginSignature } from '@kibalabs/web3-react';
 
-import { User } from './client/client';
+import { Resources } from './client';
 import { useGlobals } from './GlobalsContext';
 
 interface AuthContextType {
-  user: User | null | undefined;
+  user: Resources.User | null | undefined;
   isWeb3AccountConnecting: boolean;
   isWeb3AccountConnected: boolean;
   isWeb3AccountLoggedIn: boolean;
   isAuthenticated: boolean;
   accountAddress: string | undefined;
-  loginWithWallet: () => Promise<User>;
-  createUser: (username: string | null) => Promise<User>;
+  authToken: string | null;
+  loginWithWallet: () => Promise<Resources.User>;
+  createUser: (username: string | null) => Promise<Resources.User>;
   logout: () => void;
 }
 
@@ -32,7 +33,7 @@ export function AuthProvider(props: AuthProviderProps): React.ReactElement {
   const isWeb3AccountConnecting = account === undefined || isRestoringWeb3Session;
   const isWeb3AccountConnected = account != null;
   const isWeb3AccountLoggedIn = account != null && loginSignature != null;
-  const [user, setUser] = React.useState<User | null | undefined>(undefined);
+  const [user, setUser] = React.useState<Resources.User | null | undefined>(undefined);
   const isAuthenticated = isWeb3AccountLoggedIn && user != null;
 
   const authToken = React.useMemo((): string | null => {
@@ -47,7 +48,7 @@ export function AuthProvider(props: AuthProviderProps): React.ReactElement {
     window.location.reload();
   }, []);
 
-  const loginWithWallet = React.useCallback(async (): Promise<User> => {
+  const loginWithWallet = React.useCallback(async (): Promise<Resources.User> => {
     if (!authToken) {
       throw new Error('No authToken available');
     }
@@ -56,7 +57,7 @@ export function AuthProvider(props: AuthProviderProps): React.ReactElement {
     return newUser;
   }, [agentBarbellClient, authToken]);
 
-  const createUser = React.useCallback(async (username: string | null): Promise<User> => {
+  const createUser = React.useCallback(async (username: string | null): Promise<Resources.User> => {
     if (!authToken || !accountAddress) {
       throw new Error('No authToken/accountAddress available');
     }
@@ -72,6 +73,7 @@ export function AuthProvider(props: AuthProviderProps): React.ReactElement {
     isWeb3AccountLoggedIn,
     isAuthenticated,
     accountAddress,
+    authToken,
     loginWithWallet,
     createUser,
     logout,
@@ -82,6 +84,7 @@ export function AuthProvider(props: AuthProviderProps): React.ReactElement {
     isWeb3AccountLoggedIn,
     isAuthenticated,
     accountAddress,
+    authToken,
     loginWithWallet,
     createUser,
     logout,

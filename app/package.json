@@ -8,8 +8,11 @@
     "@kibalabs/core-react": "^0.10.0",
     "@kibalabs/ui-react": "0.12.1-next.4",
     "@kibalabs/web3-react": "0.3.1-next.4",
+    "@tanstack/react-query": "^5.102.8",
+    "@tanstack/react-query-devtools": "^5.102.8",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@kibalabs/build": "0.14.2-next.4",

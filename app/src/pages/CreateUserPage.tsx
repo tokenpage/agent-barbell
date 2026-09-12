@@ -23,7 +23,7 @@ export function CreateUserPage(): React.ReactElement {
   };
 
   return (
-    <ContainingView maxWidth='500px'>
+    <ContainingView maxWidth='500px' className='ab-page'>
       <Stack direction={Direction.Vertical} childAlignment={Alignment.Center} contentAlignment={Alignment.Center} shouldAddGutters={true} isFullHeight={true} isFullWidth={true} paddingVertical={PaddingSize.Wide2} paddingHorizontal={PaddingSize.Wide2}>
         <Text variant='header1' alignment={TextAlignment.Center}>Create your account</Text>
         <Text variant='note' alignment={TextAlignment.Center}>Your wallet is verified — pick an optional username to finish.</Text>

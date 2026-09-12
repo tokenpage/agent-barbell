@@ -22,21 +22,21 @@ class ThrottledRestEthClient(RestEthClient):
 
 class EthClientManager:
     def __init__(self) -> None:
-        self.ethClientsByChainId: dict[int, RestEthClient] = {}
-        self.archiveEthClientsByChainId: dict[int, RestEthClient] = {}
+        self.ethClientsByChainId: dict[int, ThrottledRestEthClient] = {}
+        self.archiveEthClientsByChainId: dict[int, ThrottledRestEthClient] = {}
 
-    def register_client(self, client: RestEthClient) -> None:
+    def register_client(self, client: ThrottledRestEthClient) -> None:
         self.ethClientsByChainId[client.chainId] = client
 
-    def register_archive_client(self, client: RestEthClient) -> None:
+    def register_archive_client(self, client: ThrottledRestEthClient) -> None:
         self.archiveEthClientsByChainId[client.chainId] = client
 
-    def get_archive_client(self, chainId: int) -> RestEthClient:
+    def get_archive_client(self, chainId: int) -> ThrottledRestEthClient:
         if chainId not in self.archiveEthClientsByChainId:
             raise InternalServerErrorException(f'Chain {chainId} does not have an archive client')
         return self.archiveEthClientsByChainId[chainId]
 
-    def get_regular_client(self, chainId: int) -> RestEthClient:
+    def get_regular_client(self, chainId: int) -> ThrottledRestEthClient:
         if chainId in self.ethClientsByChainId:
             return self.ethClientsByChainId[chainId]
         if chainId in self.archiveEthClientsByChainId:

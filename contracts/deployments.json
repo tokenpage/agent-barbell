@@ -1,0 +1,8 @@
+{
+  "adapterRegistry": "0x2e3023BFe3128Bbb3e51426475EF69CDAD76e199",
+  "agentWalletFactory": "0x0c86984CD94736de2989d7700BbE00eec3F01ef1",
+  "agentWalletImplementation": "0xB593dF9ba21584d3db3d897DCa004C2cEe12307F",
+  "riskBudgetRegistry": "0x2AC766FcC38e0e9Faa280bdFf91D49a006b040aC",
+  "sellPolicy": "0xCF309CB284A6b12B8A060D70f80f19f1F8A076C5",
+  "uniswapV3SwapAdapter": "0x2c5Fc263eeF5D5b3C2dEa4598E0C3e32EcF91AaC"
+}

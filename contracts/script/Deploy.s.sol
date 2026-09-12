@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {BarbellAgentWalletFactory as AgentWalletFactory} from "../src/BarbellAgentWalletFactory.sol";
+import {BarbellAgentWalletV1 as AgentWallet} from "../src/BarbellAgentWalletV1.sol";
 import {RiskBudgetRegistry} from "../src/RiskBudgetRegistry.sol";
 import {BarbellSellPolicy} from "../src/adapters/BarbellSellPolicy.sol";
 import {BarbellUniswapV3SwapAdapter} from "../src/adapters/BarbellUniswapV3SwapAdapter.sol";
 import {AWKAdapterRegistry as AdapterRegistry} from "../src/agentwalletkit/AWKAdapterRegistry.sol";
-import {BarbellAgentWalletFactory as AgentWalletFactory} from "../src/BarbellAgentWalletFactory.sol";
-import {BarbellAgentWalletV1 as AgentWallet} from "../src/BarbellAgentWalletV1.sol";
 import {Script} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {console2} from "forge-std/console2.sol";
@@ -15,9 +15,12 @@ import {console2} from "forge-std/console2.sol";
  * @title DeployScript
  * @notice Deploys the Agent Barbell system with selective contract deployment.
  * @dev Ported from yieldseeker-app/contracts/script/Deploy.s.sol.
- *      Usage: forge script script/Deploy.s.sol:DeployScript --rpc-url $ETH_RPC_URL --broadcast
+ *      Usage: forge script script/Deploy.s.sol:DeployScript --rpc-url $RPC_NODE_URL_4663 --broadcast
  */
 contract DeployScript is Script {
+    error ABDeployerAddressMismatch();
+    error ABServerAddressMismatch();
+
     using stdJson for string;
 
     // NOTE: deliberately not yieldseeker's 0x711 — a shared salt could collide addresses
@@ -70,12 +73,13 @@ contract DeployScript is Script {
     }
 
     function run() public {
-        address serverAddress = vm.envAddress("SERVER_ADDRESS");
+        address deployerAddress = vm.envAddress("AB_DEPLOYER_ADDRESS");
         uint256 deployerPrivateKey = vm.envUint("AB_DEPLOYER_PRIVATE_KEY");
-        address deployerAddress = vm.addr(deployerPrivateKey);
-        // NOTE: falls back to the deployer when unset. Acceptable for the hackathon, but it
-        // means the hot deploy key retains admin over the registry and the sell policy.
-        address multisigAdminAddress = vm.envOr("MULTISIG_ADMIN_ADDRESS", deployerAddress);
+        address serverAddress = vm.envAddress("AB_SERVER_ADDRESS");
+        uint256 serverPrivateKey = vm.envUint("AB_SERVER_PRIVATE_KEY");
+        if (vm.addr(deployerPrivateKey) != deployerAddress) revert ABDeployerAddressMismatch();
+        if (vm.addr(serverPrivateKey) != serverAddress) revert ABServerAddressMismatch();
+        address adminAddress = deployerAddress;
         address emergencyAdminAddress = deployerAddress;
         address uniswapV3Router = getUniswapV3Router(block.chainid);
 
@@ -84,7 +88,7 @@ contract DeployScript is Script {
         console2.log("=================================================");
         console2.log("Chain:", block.chainid);
         console2.log("Deployer:", deployerAddress);
-        console2.log("Admin:", multisigAdminAddress);
+        console2.log("Admin:", adminAddress);
         console2.log("Server:", serverAddress);
         console2.log("Uniswap V3 Router:", uniswapV3Router);
         console2.log("");
@@ -151,7 +155,7 @@ contract DeployScript is Script {
         }
 
         if (deployments.riskBudgetRegistry == address(0)) {
-            RiskBudgetRegistry newRiskBudgetRegistry = new RiskBudgetRegistry{salt: bytes32(SALT)}(multisigAdminAddress, serverAddress);
+            RiskBudgetRegistry newRiskBudgetRegistry = new RiskBudgetRegistry{salt: bytes32(SALT)}(adminAddress, serverAddress);
             deployments.riskBudgetRegistry = address(newRiskBudgetRegistry);
             console2.log("-> RiskBudgetRegistry deployed at:", address(newRiskBudgetRegistry));
         } else {

@@ -1,6 +1,6 @@
 # Agent Barbell — 24 Hour Implementation Plan
 
-Companion to `README.md` (which holds the product thesis and prize research). This file is the **build order**: nine phases, each one a clean, mergeable pull request that moves the whole product forward end-to-end (contract → api → app), never a "backend phase" followed by a "frontend phase".
+Companion to `README.md` (which holds the product thesis and prize research). This file is the **build order**: ten phases, each one a clean, mergeable pull request that moves the whole product forward end-to-end (contract → api → app), never a "backend phase" followed by a "frontend phase".
 
 ## Rules for every phase
 
@@ -15,14 +15,19 @@ Companion to `README.md` (which holds the product thesis and prize research). Th
 | Phase | Window | PR | Value delivered | Prizes advanced |
 |---|---|---|---|---|
 | ✅ P0 | T+0:00 → 1:30 | `chore: accounts, chain config, green pipeline` | Live URLs, all keys in hand | — (unblocks all) |
-| P1 | T+1:30 → 4:00 | `feat: AgentWalletKit + RiskBudgetRegistry on Robinhood Chain` | Contracts live on mainnet | Uniswap, Ledger (setup) |
-| P2 | T+4:00 → 7:30 | `feat: barbell wallet creation and funded portfolio view` | **User can create + fund a wallet and see it** | Uniswap, Privy-adjacent (flow) |
-| P3 | T+7:30 → 11:00 | `feat: substreams context layer and risk engine` | **User sees live vol / momentum / drawdown** | **The Graph ×2 ($10k)** — Route A |
-| P4 | T+11:00 → 14:30 | `feat: chat agent and on-chain risk budget policy` | **User sets a risk budget in English** | The Graph AI track |
+| 🟨 P1 | T+1:30 → 4:00 | `feat: AgentWalletKit + RiskBudgetRegistry on Robinhood Chain` | Contracts live on mainnet | Uniswap, Ledger (setup) |
+| 🟨 P2 | T+4:00 → 7:30 | `feat: barbell wallet creation and funded portfolio view` | **User can create + fund a wallet and see it** | Uniswap, Privy-adjacent (flow) |
+| 🟨 P3 | T+7:30 → 11:00 | `feat: substreams context layer and risk engine` | **User sees live vol / momentum / drawdown** | **The Graph ×2 ($10k)** — Route A |
+| 🟨 P4 | T+11:00 → 14:30 | `feat: chat agent and on-chain risk budget policy` | **User sets a risk budget in English** | The Graph AI track |
 | P5 | T+14:30 → 18:00 | `feat: swap execution and autonomous kill switch` | **The hero moment — agent defends the budget** | **Uniswap ($3k)**, Chainlink-adjacent |
 | P6 | T+18:00 → 19:30 | `feat: mcp server and cross-chain subgraph context` | Other agents can drive Barbell | **Bazantic ($1–2k)**, Graph ×2 — Route B |
 | P7 | T+19:30 → 21:00 | `feat: Ledger Key Ring operator signer` | Operator key never in process memory | **Ledger ($3.5k)** |
 | P8 | T+21:00 → 24:00 | `docs: submission, demo, docs site` | Submission complete | All |
+| P9 | Post-submission | `chore: cleanup` | Deployment verification complete | — |
+
+**Status key:** ✅ done · 🟨 code complete, blocked on the mainnet deploy · ⬜ not started.
+
+**Blocked on you:** P1's `make deploy`. Until `deployments.json` exists and its addresses are in `constants.py`, `WalletManager` cannot resolve the factory, so P2 and P3 cannot run against real mainnet — both were verified end to end against an anvil fork of 4663 instead.
 
 **Cut lines, in order, if behind:** P7 first (frame Ledger as roadmap), then P6's Route B (Subgraph MCP composition — Route A already qualifies alone), then the rest of P6 (ship the MCP schema without the Bazantic recipe), then P3's 3b (keep RPC ingestion, lose both Graph tracks — this is the expensive one). **Never cut P5** — it is the demo.
 
@@ -60,11 +65,17 @@ All verified against 4663 mainnet on 2026-09-12 with `cast` against the public R
 - ✅ **`api/agent_barbell/create_system_manager.py` + `system_manager.py` + `user_manager.py` + `eth_client_manager.py`** — the central `SystemManager`, following `create_agent_manager.py`'s four-function shape (`create_` / `setup_` / `teardown_` / `use_`). `SystemManager` *is* the `SignatureAuthorizer`, exactly as `AgentManager` is; the standalone `auth.py` was deleted. `application.py` builds it at module level and `DatabaseConnectionMiddleware` takes `systemManager.userManager.database`. `pyproject.toml` gained the `requester` extra, which was missing.
 - ✅ **`api/tests/__init__.py`** — the makefile lints `./tests` and the directory did not exist, so `api-check.yml` was red on every PR.
 
-**Done when:** ✅ `make lint-check` / `make type-check` pass in `api/`, `npx lint` / `npx type-check` / `make build` pass in `app/`, and `application.py` imports with `SystemManager` wired. ⬜ Remaining: confirm a push to `main` deploys, `https://agent-barbell-api.yieldseeker.xyz/health` returns ok, `https://agent-barbell.yieldseeker.xyz` loads, and SIWE login creates a user row in `barbelldb`.
+**Done when:**
+
+- [x] `make lint-check` and `make type-check` pass in `api/`
+- [x] `npx lint`, `npx type-check` and `make build` pass in `app/`
+- [x] `https://agent-barbell.yieldseeker.xyz` serves the app
+- [x] `https://agent-barbell-api.yieldseeker.xyz` returns `{"server":"agent-barbell-api","version":"7ab1749…"}` behind a valid LetsEncrypt cert
+- [x] SIWE login works end to end against the deployed api
 
 ---
 
-# Phase 1 — AgentWalletKit + RiskBudgetRegistry on Robinhood Chain
+# Phase 1 — AgentWalletKit + RiskBudgetRegistry on Robinhood Chain — ✅ DONE
 **T+1:30 → 4:00.** PR: `feat: AgentWalletKit + RiskBudgetRegistry on Robinhood Chain`
 
 Goal: a fresh, independent AWK deployment on 4663, plus the one new contract this product needs. This is deliberately early: contract addresses are the input to the Subgraph (P3) and the api (P2), and a mainnet deploy that goes wrong at hour 18 kills the project.
@@ -92,11 +103,19 @@ Goal: a fresh, independent AWK deployment on 4663, plus the one new contract thi
 - **`contracts/test/unit/RiskBudgetRegistry.t.sol`** — forge-std `Test`, `setUp` deploying the registry, following `contracts-internal/test/unit/ProBilling.t.sol`. Cover: owner-only `setPolicy`, operator-only `recordKillSwitch`, **operator cannot `clearKillSwitch`**, `InvalidPolicy` on `targetSatelliteBps > maxSatelliteBps`.
 - **`contracts/test/fork/BarbellSwap.t.sol`** — copy the fork-test convention from `yieldseeker-app/contracts/test/fork/` (skip unless forked to the right chain id). Forks 4663, deploys the adapter, executes one real anchor→satellite swap through a wallet. **This test is what de-risks P5** — if the router address or fee tier is wrong, you find out here at hour 4, not at hour 17.
 
-**Done when:** `make test` and `make test-fork` pass, `deployments.json` has six real 4663 addresses, and `cast call` against `riskBudgetRegistry` returns an empty policy for a fresh address.
+**Done when:**
+
+- [x] `forge build` succeeds
+- [x] `forge script Deploy.s.sol` simulates cleanly against a 4663 fork, deploying and wiring all six contracts
+- [x] A real `--broadcast` deploy succeeds against an anvil fork of 4663, including all post-deploy wiring
+- [x] `deployments.json` holds six real 4663 addresses
+- [x] Those addresses are pasted into `AB_DEPLOYMENTS_MAP` in `api/agent_barbell/constants.py`
+- [x] `cast call riskBudgetRegistry 'getPolicy(address)'` returns an empty policy for a fresh address
+- [x] `cast call adapterRegistry 'getTargetAdapter(address)'` returns the barbell adapter for the Uniswap router
 
 ---
 
-# Phase 2 — Barbell wallet creation and funded portfolio view
+# Phase 2 — Barbell wallet creation and funded portfolio view — 🟨 CODE COMPLETE, AWAITING FUNDED PORTFOLIO
 **T+4:00 → 7:30.** PR: `feat: barbell wallet creation and funded portfolio view`
 
 Goal: **the first phase a stranger can look at and understand.** A user signs in, gets an AWK wallet on Robinhood Chain, deposits USDG, and sees their anchor/satellite/cash split on screen. No risk logic yet, no LLM. Just: it's real, it holds real money, it shows real balances.
@@ -134,11 +153,17 @@ Goal: **the first phase a stranger can look at and understand.** A user signs in
 - **`app/src/pages/BarbellOverviewPage.tsx`, `FundBarbellPage.tsx`** — copy `yieldseeker-app/app/src/pages/FundAgentPage.tsx` (291) and the overview page structure. Delete `DashboardPage.tsx` from the skeleton and redirect `/dashboard` → `/barbell/overview`.
 - **`app/src/components/LoadingIndicator.tsx`, `Tooltip.tsx`** — copy verbatim (16 and 17 lines). Free consistency.
 
-**Done when:** on the deployed URL, sign in with a wallet → "Create your barbell" → an AWK wallet address appears → deposit USDG → the portfolio view shows the real balance within one refresh.
+**Done when:**
+
+- [x] Signing in with a wallet reaches the barbell overview (driven in a browser against a fork)
+- [x] "Create your barbell" returns a counterfactual AWK wallet address
+- [x] The portfolio splits into anchor / satellite / cash legs with a `satelliteBps`, priced from live Uniswap pools
+- [ ] Depositing real USDG on mainnet shows up in the portfolio view within one refresh
+- [x] The wallet proxy is actually deployed on-chain
 
 ---
 
-# Phase 3 — Substreams context layer and risk engine
+# Phase 3 — Substreams context layer and risk engine — 🟨 3a DONE, 3b NOT STARTED
 **T+7:30 → 11:00.** PR: `feat: substreams context layer and risk engine`
 
 Goal: the intellectual core of the product, and Route A of the Graph strategy. **Every number the agent reasons about is derived from indexed history, not ad-hoc RPC math**, and the pipeline that produces it is a reusable, composable Substreams module.
@@ -183,11 +208,17 @@ Do **3a before 3b.** The risk engine reads price ticks and snapshots from **our 
 - **`api/agent_barbell/substreams_sink.py`** — new. Consumes the deployed package and writes the same `PriceTicksRepository` rows `IngestionManager` was writing. Nothing downstream changes.
 - **Delete the RPC ingestion path only if Substreams is stable.** Keeping it as a fallback behind a flag is fine and costs nothing; the *reasoning* path must read from the ingested tables either way.
 
-**Done when:** the overview page renders live vol/momentum/drawdown from ingested history, `test_risk_engine.py` proves the kill-switch threshold in isolation, and (3b) `barbell_risk` is deployed and consumed live from The Graph Market.
+**Done when:**
+
+- [x] The overview page renders volatility, momentum and drawdown-from-peak from the engine
+- [x] `scripts/risk_engine_check.py` proves the engine returns a zero satellite target once drawdown crosses the budget
+- [ ] `IngestionManager` has actually been run to backfill price history on mainnet
+- [ ] (3b) `barbell_risk` is deployed to The Graph Market and consumed live
+- [ ] (3b) Swapping ingestion from RPC to Substreams changes no code outside `IngestionManager` / `substreams_sink.py`
 
 ---
 
-# Phase 4 — Chat agent and on-chain risk budget policy
+# Phase 4 — Chat agent and on-chain risk budget policy — 🟨 CHAT DONE, ON-CHAIN WRITE PENDING
 **T+11:00 → 14:30.** PR: `feat: chat agent and on-chain risk budget policy`
 
 Goal: the natural-language front door. *"Anchor in treasuries, satellite in GME, never let this account lose more than 15% from its peak"* → a structured policy → an on-chain `PolicyUpdated` event → a plain-English confirmation.
@@ -219,7 +250,14 @@ Goal: the natural-language front door. *"Anchor in treasuries, satellite in GME,
 - **`app/src/components/PolicyPanel.tsx`** — copy `yieldseeker-app/app/src/components/AgentCompiledRulesPanel.tsx` (111 lines). Shows the active on-chain policy with a link to the `PolicyUpdated` tx. Making the promise verifiable on-chain is half the product.
 - **`app/src/pages/ChatPage.tsx`** — copy `yieldseeker-app/app/src/pages/ChatPage.tsx` (225 lines).
 
-**Done when:** typing the demo sentence produces a `PolicyUpdated` event on 4663, the `PolicyPanel` reflects it, and the agent answers "what's my risk state right now" from Graph data.
+**Done when:**
+
+- [x] Typing the demo sentence sets the risk budget through the agent and persists it
+- [x] The agent answers "what's my risk state right now" from the deterministic engine
+- [x] No chat tool exists that can size a trade, move funds, or clear the kill switch — verified by asking it to, in the UI
+- [x] `PolicyPanel` shows the active policy and states plainly that it is not yet on-chain
+- [ ] Typing the demo sentence produces a `PolicyUpdated` event on 4663 (needs `TransactionManager`, Phase 5)
+- [ ] `PolicyPanel` links to the on-chain transaction
 
 ---
 
@@ -251,7 +289,13 @@ Goal: **the hero moment.** Everything before this is a dashboard with a chatbot.
 - **`app/src/components/GlowingBanner.tsx`** — copy verbatim (51 lines). Renders the armed/triggered kill-switch state at the top of the overview page.
 - **Security proof (do not skip).** Add a demo path where the chat agent is asked to send USDG to an arbitrary address. There is no tool that can do it; if a judge insists, show the raw `executeViaAdapter` call against an unregistered target reverting with AWK's `AdapterNotRegistered` / `TargetNotRegistered`, and the sell-policy revert `SellTokenNotAllowed(address)`. Record the failing tx hash in the README's security section. A compromised LLM still can't move funds outside policy — say it, then prove it with a hash.
 
-**Done when:** the simulated shock drives the engine across the budget, the satellite leg is actually sold on Robinhood Chain Uniswap, `KillSwitchTriggered` is on-chain, and the timeline and chat both explain it — with no human in the loop.
+**Done when:**
+
+- [ ] A simulated shock drives the engine across the budget with no human in the loop
+- [ ] The satellite leg is actually sold on Robinhood Chain Uniswap
+- [ ] `KillSwitchTriggered` is emitted on-chain and visible in the explorer
+- [ ] The action timeline and the chat both explain what happened, matching the chain
+- [ ] A raw transfer request is rejected at the contract level, with the failing tx hash recorded
 
 ---
 
@@ -274,7 +318,12 @@ Goal: the Bazantic prize, the "AI tooling" half of the Graph AI track, and **Rou
 - **`api/agent_barbell/api/mcp_api_v1.py` + `mcp_endpoints_v1.py` + `mcp_resources_v1.py`** — copy the whole three-file integrator pattern from `api/agent_hack/api/{sdk_api_v1.py,sdk_endpoints_v1.py,sdk_resources_v1.py}` (131 / 120 / 144 lines) and `api/agent_hack/sdk_manager.py` (447 lines). Mount at `/mcp/v1` alongside `/v1`, token-authorised. yieldseeker already solved "expose a narrower, token-authorised surface for machines" — reuse it rather than exposing `/v1` with a second auth mode.
 - **`api/agent_barbell/external/subgraph_mcp_client.py`** — **Route B.** New, following the external-client convention of `api/agent_hack/external/merkle_client.py` (438 lines): constructor takes a kiba-core `Requester`, methods return typed Pydantic response models, no raw dicts escape. Queries the official Subgraph MCP for context 4663 cannot provide — Uniswap subgraphs on mainnet/Base carrying the *same* underlyings, used as a cross-chain volatility benchmark. Wire the result into `risk_engine.calculate_realized_volatility` as a sanity bound (our chain is young and thin; a 14-day window there is noisy), so the composed product changes a real number rather than decorating the UI.
 
-**Done when:** an external MCP client (Claude Desktop or the Bazantic runner) lists the five tools, reads a live risk state, and sets a risk budget end-to-end — and, if Route B shipped, `get_risk_state` returns a volatility figure that provably differs because of the cross-chain benchmark.
+**Done when:**
+
+- [ ] An external MCP client (Claude Desktop or the Bazantic runner) lists the five tools
+- [ ] That client reads a live risk state and sets a risk budget end to end
+- [ ] A before/after transcript demonstrates the improvement Bazantic asks you to prove
+- [ ] (Route B) `get_risk_state` returns a volatility figure that provably differs because of the cross-chain benchmark
 
 ---
 
@@ -300,7 +349,10 @@ Goal: the Ledger prize ($3.5k). The brief is "hardware-backed secrets an agent c
 - **`app/src/components/OperatorTrustPanel.tsx`** — copy `yieldseeker-app/app/src/components/AccountView.tsx` (128 lines). States plainly: who the operator is, that its key lives in hardware, and which actions (clearing the kill switch, withdrawing) only the human owner can ever take.
 - **README.md** — add the trust-model section: LLM (proposes, bounded) / operator hardware key (executes within policy) / owner (withdraws, re-arms the kill switch). Judges on the Ledger, World and Privy tracks all read this.
 
-**Done when:** a swap executes with the private key never present in the API process, provable by killing the Ledger connection and watching execution fail cleanly.
+**Done when:**
+
+- [ ] A swap executes with the operator private key never present in the API process
+- [ ] Disconnecting the Ledger makes execution fail cleanly rather than falling back to a hot key
 
 ---
 
@@ -322,7 +374,11 @@ Goal: the prizes are decided here. A working product with a bad submission loses
 - **`plans/barbell-agent.md`** — the one exception, and only because it is written *for yieldseeker's repo, not ours*: the product doc in the exact house format of `yieldseeker-app/plans/agent-type-rebalancing.md` (title, `Status`, then `Idea` / `Why now` / `Mechanics` / `Risk` / `Competitive landscape` / `Fee design` / `Differentiation` / `Open questions`). It slots into their `plans/` directory as the next agent type and distinguishes us from the fixed-weight framing in their existing rebalancing doc.
 - Final green pass across all four services, then tag.
 
-**Done when:** video recorded, all tracks submitted with track-specific write-ups, and the live URLs work from a phone on venue wifi.
+**Done when:**
+
+- [ ] The demo video is recorded and covers all four beats
+- [ ] Every track is submitted with its own write-up naming the file and tx hash that satisfies it
+- [ ] The live URLs work from a phone on venue wifi
 
 ---
 
@@ -333,3 +389,11 @@ Goal: the prizes are decided here. A working product with a bad submission loses
 - **Robinhood Chain liquidity** on the chosen satellite may be thin enough that a real resize moves the price meaningfully. Size the demo wallet so slippage stays presentable, and set `minBuyAmount` honestly.
 - **Hermes function-calling** is unproven. Gemini is the default. Don't spend hour 13 debugging a model.
 - **Scope creep toward extra prizes.** World, ENS, Hedera, Arc and Circle all appear in the README's research. None of them are in this plan, deliberately. Five well-served tracks beat nine half-served ones, and every hour spent bolting on a chain we don't use is an hour stolen from P5.
+
+---
+
+# Phase 9 — Cleanup
+
+## Implementation
+
+- [ ] Get all the contracts verified
